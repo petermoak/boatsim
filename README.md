@@ -25,10 +25,10 @@ cd ~/.signalk && npm install http://<pi-ip>:5010/signalk-plugin.tgz
 Restart the Signal K container, then in the Signal K admin UI go to **Server → Plugin Config →
 Boatsim N2K Injector**, enable it, and keep port `10112` unless it clashes.
 
-The boatsim container must be able to reach that port:
-- Signal K on **host networking**: nothing else to do.
-- Signal K on **bridge networking**: publish `10112:10112` on the Signal K container, or put both
-  containers on the same Docker network and set `SIGNALK_HOST` to the Signal K container name.
+Boatsim reaches the plugin over the Docker network Signal K is on (`serendipity` on the Pi), by
+Signal K's container name. The stack joins that network; set `SIGNALK_HOST` (container name,
+default `signalk`) and `DOCKER_NETWORK` (default `serendipity`) in the stack's environment
+variables if yours differ. No port needs publishing on the Signal K container.
 
 ### 2. Run boatsim as a Portainer stack
 
@@ -40,7 +40,8 @@ Settings (environment variables in `docker-compose.yml`):
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `SIGNALK_HOST` | `host.docker.internal` | Where the injector plugin listens |
+| `SIGNALK_HOST` | `signalk` | Signal K container name (where the injector plugin listens) |
+| `DOCKER_NETWORK` | `serendipity` | Existing Docker network shared with Signal K |
 | `SIGNALK_INJECTOR_PORT` | `10112` | Plugin TCP port |
 | `SIGNALK_AUTOCONNECT` | `true` | Connect to Signal K on startup |
 | `BOATSIM_PORT` | `5010` | Port for UI, API and Socket.IO |

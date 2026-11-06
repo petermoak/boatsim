@@ -14,7 +14,7 @@ Development happens on Windows (no Node or Docker is installed there); the image
 browser UI --Socket.IO update_pgn_2000--> backend --TCP, Actisense text lines--> signalk-boatsim-injector plugin --app.emit('nmea2000out')--> Signal K's Actisense connection --> NGX --> bus
 ```
 
-Signal K owns the Actisense serial port (`/dev/actisense`, connection id `ngx2k`), so boatsim never touches serial hardware. The backend encodes each PGN with canboatjs v1 `pgnToActisenseSerialFormat` (field values keyed by display **Name**, matching the frontend's `@canboat/pgns` definitions) into `timestamp,prio,pgn,src,dst,len,hh,...` lines. The plugin validates each line and emits it. Signal K's canboatjs (v3, camelCase field ids) sends *string* `nmea2000out` messages raw, so the version/field-naming mismatch never matters. Keep it that way: don't send JSON PGNs to Signal K.
+Signal K owns the Actisense serial port (`/dev/actisense`, connection id `ngx2k`), so boatsim never touches serial hardware. Signal K runs on the external Docker network `serendipity` with port 10112 unpublished, so the compose stack joins that network and connects by Signal K's container name (`SIGNALK_HOST`). The backend encodes each PGN with canboatjs v1 `pgnToActisenseSerialFormat` (field values keyed by display **Name**, matching the frontend's `@canboat/pgns` definitions) into `timestamp,prio,pgn,src,dst,len,hh,...` lines. The plugin validates each line and emits it. Signal K's canboatjs (v3, camelCase field ids) sends *string* `nmea2000out` messages raw, so the version/field-naming mismatch never matters. Keep it that way: don't send JSON PGNs to Signal K.
 
 The gateway only transmits PGNs on its transmit list (canboatjs `defaultTransmitPGNs`); others are silently dropped.
 
