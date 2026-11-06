@@ -8,7 +8,9 @@
 services:
   boatsim:
     build: .
-    image: boatsim:latest
+    # Built on the Pi from this repo; never pulled from a registry (so Portainer's
+    # "re-pull image" on redeploy doesn't fail looking for boatsim on Docker Hub).
+    pull_policy: build
     container_name: boatsim
     restart: unless-stopped
     ports:
