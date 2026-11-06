@@ -1,0 +1,10 @@
+**/node_modules
+**/build
+.git
+.github
+*.md
+!signalk-plugin/*.md
+scripts/*.py
+requirements.txt
+env-example
+frontend/public/Ray_E7_manual.pdf

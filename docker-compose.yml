@@ -1,0 +1,25 @@
+# Portainer stack (Stacks -> Add stack -> Repository, compose path docker-compose.yml).
+services:
+  boatsim:
+    build: .
+    image: boatsim:latest
+    container_name: boatsim
+    restart: unless-stopped
+    ports:
+      - "5010:5010"
+    environment:
+      # Where the signalk-boatsim-injector plugin listens. host.docker.internal
+      # reaches the Pi itself, which works when Signal K uses host networking or
+      # publishes port 10112. If Signal K is on a Docker network instead, attach
+      # this service to that network and use the Signal K container name here.
+      SIGNALK_HOST: host.docker.internal
+      SIGNALK_INJECTOR_PORT: "10112"
+      # Set to "false" to start with output disabled (toggle in the UI).
+      SIGNALK_AUTOCONNECT: "true"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - boatsim-data:/data
+
+volumes:
+  boatsim-data:

@@ -1,4 +1,7 @@
+# Local development only; copy to ~/.boatsim/.env. The container uses env vars from docker-compose.yml.
 PORT=3002
 REACT_APP_BACKEND_PORT=5010
-# REACT_APP_BACKEND_URL=https://ddc0-142-68-6-229.ngrok-free.app
 REACT_APP_BACKEND_URL=http://localhost:$REACT_APP_BACKEND_PORT
+# Signal K injector plugin to send PGNs to
+SIGNALK_HOST=localhost
+SIGNALK_INJECTOR_PORT=10112

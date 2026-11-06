@@ -1,8 +1,8 @@
 import path from 'path';
 import os from 'os';
-import dotenv from 'dotenv';
+import fs from 'fs';
 
-// Load environment variables from ~/.boatsim/.env
-export const boatsimEnvPath = path.join(os.homedir(), '.boatsim', '.env');
+// Where saved defaults/waypoints live. Mount a volume here in the container.
+export const STORAGE_DIR = process.env.BOATSIM_DATA_DIR || path.join(os.homedir(), '.boatsim');
 
-export const STORAGE_DIR = path.join(os.homedir(), '.boatsim');
+fs.mkdirSync(STORAGE_DIR, { recursive: true });

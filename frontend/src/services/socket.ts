@@ -5,8 +5,9 @@ let socket: Socket | null = null;
 
 export const initSocket = (): Socket => {
     if (!socket) {
-        const backendUrl = process.env.REACT_APP_BACKEND_URL;
-        console.log(backendUrl);
+        // Unset in the container build: the UI is served by the backend, so
+        // connect to the page's own origin. Set it for split dev servers.
+        const backendUrl = process.env.REACT_APP_BACKEND_URL || window.location.origin;
         socket = io(backendUrl, {
             transports: ['websocket'],
             reconnectionDelay: 1000,

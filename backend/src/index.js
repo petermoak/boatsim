@@ -1,40 +1,73 @@
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
 import { createServer } from 'http';
-import { MessageForwarder } from './message_forwarder.js';
-import { configureSocketServer } from './utils/socket_server.js';
-import { configureRoutes } from './utils/routes.js';
-import { boatsimEnvPath } from './utils/paths.js';
+import { fileURLToPath } from 'url';
+import os from 'os';
 import dotenv from 'dotenv';
 
-// Load environment variables from ~/.boatsim/.env
-dotenv.config({ path: boatsimEnvPath });
+// Local dev: pick up ~/.boatsim/.env if present. Real env vars win.
+// Loaded before the other modules are imported so they see these values.
+dotenv.config({ path: path.join(os.homedir(), '.boatsim', '.env') });
 
-// configure the environment 
-const frontendPort = process.env.PORT;
-const backendPort = process.env.REACT_APP_BACKEND_PORT;
+const { MessageForwarder } = await import('./message_forwarder.js');
+const { configureSocketServer } = await import('./utils/socket_server.js');
+const { configureRoutes } = await import('./utils/routes.js');
 
-if (!frontendPort || !backendPort) {
-    throw new Error('Required environment variables PORT and REACT_APP_BACKEND_PORT not found in ~/.boatsim/.env');
-}
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// One port serves the UI, REST API and Socket.IO.
+const port = Number(process.env.BOATSIM_PORT || process.env.REACT_APP_BACKEND_PORT || 5010);
+
+const signalkOptions = {
+    host: process.env.SIGNALK_HOST || 'host.docker.internal',
+    port: Number(process.env.SIGNALK_INJECTOR_PORT || 10112),
+    enabled: process.env.SIGNALK_AUTOCONNECT !== 'false'
+};
+
+const frontendBuildDir = process.env.FRONTEND_BUILD_DIR
+    || path.resolve(__dirname, '../../frontend/build');
 
 const app = express();
 const httpServer = createServer(app);
 
-// Configure server and get io instance
-const { corsMiddleware, io } = configureSocketServer(httpServer, frontendPort);
+const { corsMiddleware, io } = configureSocketServer(httpServer);
 
-// Add middleware
 app.use(corsMiddleware);
-app.use(express.json()); // Add JSON body parsing
+app.use(express.json());
 
-// Create message forwarding instance and set up its routes
-// OPENS a websocket connection to the frontend
-const forwarder = new MessageForwarder(io);
+const forwarder = new MessageForwarder(io, signalkOptions);
 
-// Configure all routes
 configureRoutes(app, forwarder);
 
-// Start server
-httpServer.listen(backendPort, '0.0.0.0', () => {
-  console.log(`Server running on port ${backendPort}`);
-}); 
+// The Docker image packs /signalk-plugin so the Signal K container can
+// `npm install http://<pi>:<port>/signalk-plugin.tgz`.
+const pluginTarball = process.env.SIGNALK_PLUGIN_TARBALL || '/app/signalk-plugin.tgz';
+app.get('/signalk-plugin.tgz', (req, res) => {
+    if (!fs.existsSync(pluginTarball)) return res.status(404).send('Plugin tarball not built');
+    res.sendFile(pluginTarball);
+});
+
+// Serve the built React app (same origin as the API, so no backend URL is needed).
+if (fs.existsSync(path.join(frontendBuildDir, 'index.html'))) {
+    app.use(express.static(frontendBuildDir));
+    app.get(/^\/(?!api\/|socket\.io\/).*/, (req, res) => {
+        res.sendFile(path.join(frontendBuildDir, 'index.html'));
+    });
+    console.log(`Serving frontend from ${frontendBuildDir}`);
+} else {
+    console.log(`No frontend build at ${frontendBuildDir}; serving API only`);
+}
+
+httpServer.listen(port, '0.0.0.0', () => {
+    console.log(`Boatsim running on port ${port}`);
+    console.log(`Signal K injector target: ${signalkOptions.host}:${signalkOptions.port}`);
+});
+
+const shutdown = () => {
+    forwarder.cleanup();
+    httpServer.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 3000).unref();
+};
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);

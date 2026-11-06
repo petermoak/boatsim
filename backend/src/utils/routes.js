@@ -50,20 +50,15 @@ export function configureRoutes(app, forwarder) {
     });
 
     // Device management routes
-    app.get('/api/device/status', async (req, res) => {
-        const status = await forwarder.getEachDeviceStatus();
-        res.json(status);
+    // The only "device" is the TCP link to the Signal K injector plugin.
+    app.get('/api/device/status', (req, res) => {
+        res.json(forwarder.getEachDeviceStatus());
     });
 
     app.post('/api/device/connect', (req, res) => {
-        console.log("Connection request for device", req.body);
         try {
-            if (req.body.devicePath.startsWith("tcp://")) {
-                return res.status(500).json({ error: "TCP devices not yet supported" });
-            } else {
-                forwarder.connectSerialDevice(req.body.devicePath);
-                return res.json({ message: 'Connection initiated' });
-            }
+            forwarder.connectDevice();
+            return res.json({ message: 'Connection initiated' });
         } catch (error) {
             return res.status(500).json({ error: error.message });
         }
@@ -71,8 +66,7 @@ export function configureRoutes(app, forwarder) {
 
     app.post('/api/device/disconnect', (req, res) => {
         try {
-            console.log("Disconnection request for device", req.body);
-            forwarder.disconnectSerialDevice(req.body.devicePath);
+            forwarder.disconnectDevice();
             res.json({ message: 'Disconnection initiated' });
         } catch (error) {
             res.status(500).json({ error: error.message });
