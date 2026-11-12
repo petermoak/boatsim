@@ -16,6 +16,7 @@ export class Simulation {
 
     // Boat at the first waypoint, heading for the second.
     reset() {
+        this.arrivals = [];
         const first = this.waypoints[0];
         const second = this.waypoints[1];
         this.targetIndex = this.waypoints.length > 1 ? 1 : 0;
@@ -29,7 +30,9 @@ export class Simulation {
     }
 
     // Advance by dtSeconds at speedMps. Returns the new boat state.
+    // this.arrivals lists the waypoint indexes reached during this step.
     step(dtSeconds, speedMps) {
+        this.arrivals = [];
         if (this.finished) {
             this.boat = { ...this.boat, speed_mps: 0 };
             return this.boat;
@@ -46,6 +49,7 @@ export class Simulation {
             if (distance < ARRIVAL_RADIUS_M || distance <= remaining) {
                 remaining -= Math.min(remaining, distance);
                 here = target;
+                this.arrivals.push(this.targetIndex);
                 if (this.targetIndex >= this.waypoints.length - 1) {
                     this.finished = true;
                     break;

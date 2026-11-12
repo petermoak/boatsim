@@ -38,7 +38,7 @@ Frontend: when `REACT_APP_BACKEND_URL` is unset (container build), REST and Sock
 
 ## Scenarios and the session (backend/src/sim)
 
-- `scenario_store.js`: scenarios are `<data>/scenarios/<id>.json` = `{ id, name, waypoints[], pgns: { "<pgn>": { stream, rate, values } } }`. First start migrates the legacy `pgn_defaults.json` + `waypoints.json` into "Halifax loop". Phase 2 (chart editor, per-waypoint PGN values) builds on this schema.
+- `scenario_store.js`: scenarios are `<data>/scenarios/<id>.json` = `{ id, name, waypoints: [{ name, lat, lon, values: { "<pgn>": { field: n } } }], pgns: { "<pgn>": { stream, rate, values } } }`. `pgns` holds starting values; a waypoint's `values` are merged in when the boat reaches it (`Simulation.arrivals` → `SimRunner.applyWaypointValues`), waypoint 0's at load/restart. First start migrates the legacy `pgn_defaults.json` + `waypoints.json` into "Halifax loop".
 - `sim_runner.js` (`SimRunner`): the single **session** = loaded scenario + unsaved live edits. Owns the tick loop (`simulation.js`, geodesy great-circle steering, 200 ms), one emit timer per streamed PGN, and broadcasts over Socket.IO: `sim_session` (full snapshot on any change), `sim_tick` (boat + simulated PGN values, 500 ms), `pgn_log` (emit-log lines). Clients edit via socket events `sim_set_fields|sim_set_rate|sim_set_stream|sim_add_pgn|sim_remove_pgn`; session actions via REST `/api/sim/{load,start,stop,reset,save}`; scenario CRUD via `/api/scenarios`. `<data>/session.json` remembers the last loaded scenario (loaded stopped on restart).
 - Boat speed input is 128259 "Speed Water Referenced" (m/s), held separately as `speedInput` so arriving at the last waypoint (speed → 0 on the wire) doesn't overwrite it.
 - `pgn_factory.js`: values for `SIMULATED_PGNS` (129029, 126992, 129025, 129026, 128259), overwritten each tick. Field names must be the exact canboat **Name** (e.g. `"Number of SVs"`) in the definition's units (126992 `Time` is seconds); unknown names are dropped silently by the encoder.
@@ -50,7 +50,8 @@ The frontend mirrors the server session; it no longer simulates or emits.
 
 - `services/socket.ts` applies `sim_session`/`sim_tick`/`pgn_log` into stores (`simStore`, `pgnStore.applySessionPGNs`, `emitterStore`). `services/sim.ts` sends REST/socket controls.
 - `App.tsx` loads PGN definitions (`utils/pgn_definition_loader.ts` merges `@canboat/pgns` canboat + IK + NGT) for the UI, then re-applies the session on top (a session can arrive before definitions load).
-- `ScenarioBar.tsx` (pick/save/save as/restart) sits in `PGNPanel`'s header; `PGNItem` edits call `simApi`.
+- `ScenarioBar.tsx` (pick/save/save as/restart, Define sim, Edit route) sits in `PGNPanel`'s header; `PGNItem` edits call `simApi`.
+- Scenario editor: `stores/editorStore.ts` holds a draft (only sent on Save via `simApi.saveScenario`), `ScenarioEditor.tsx` is the panel over the map, and `Map.tsx` edit mode adds waypoints on Leaflet `contextmenu` (right-click; `tapHold` makes press-and-hold fire it on touch), drags and selects them. Per-waypoint editable PGNs exclude the computed ones (`COMPUTED_PGNS`); for 128259 only "Speed Water Referenced".
 
 Zustand stores in `frontend/src/stores/` are often read with `getState()` outside React.
 

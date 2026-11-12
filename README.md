@@ -26,8 +26,19 @@ whether each one streams. Pick one in the scenario list next to **Start Simulati
 - On first start boatsim creates **Halifax loop** from the old saved waypoints and PGN defaults.
   After a container restart the last loaded scenario is loaded again, stopped.
 
-Scenarios are stored as JSON in the `boatsim-data` volume (`/data/scenarios`). Drawing new routes on
-the chart is the next phase.
+### Defining a scenario on the chart
+
+1. **Define sim** starts a new route using your default PGNs (PGN Database → defaults tab, plus the
+   simulated position/speed PGNs). **Edit route** opens the loaded scenario's saved route instead.
+2. **Right-click** the chart (or **press and hold** on a touch screen) to add a waypoint at the end of
+   the route. Drag a waypoint to move it; click it to select it.
+3. With a waypoint selected, the panel lists every default PGN's values. They take effect when the
+   boat reaches that waypoint and hold until a later waypoint changes them; waypoint 1's values apply
+   at the start. A new waypoint starts with a copy of the previous one's values, so only change what
+   differs. Boat speed is in m/s, angles in radians (the PGN units).
+4. **Save**, give it a name, and load it from the scenario list to run it.
+
+Scenarios are stored as JSON in the `boatsim-data` volume (`/data/scenarios`).
 
 - **Signal K data** makes boatsim a virtual NMEA 2000 gateway. Signal K decodes every PGN as if it
   came off the bus. Works with the bus powered off.

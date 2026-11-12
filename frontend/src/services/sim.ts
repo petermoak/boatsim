@@ -37,6 +37,16 @@ export const simApi = {
     await simApi.refreshScenarios();
     return saved;
   },
+  getScenario: (id: string) => call('GET', `/api/scenarios/${encodeURIComponent(id)}`),
+  // Create (no id) or replace (id) a scenario definition.
+  async saveScenario(scenario: { id: string | null; name: string; waypoints: unknown[]; pgns: unknown }) {
+    const { id, ...body } = scenario;
+    const saved = id
+      ? await call('PUT', `/api/scenarios/${encodeURIComponent(id)}`, body)
+      : await call('POST', '/api/scenarios', body);
+    await simApi.refreshScenarios();
+    return saved;
+  },
   async deleteScenario(id: string) {
     await call('DELETE', `/api/scenarios/${encodeURIComponent(id)}`);
     await simApi.refreshScenarios();

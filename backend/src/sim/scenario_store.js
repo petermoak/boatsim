@@ -9,10 +9,11 @@ import { SIMULATED_PGNS } from './pgn_factory.js';
 // Scenarios are JSON files in <data>/scenarios/<id>.json:
 // {
 //   id, name, createdAt, updatedAt,
-//   waypoints: [{ name, lat, lon }],
+//   waypoints: [{ name, lat, lon, values: { "<pgn>": { "<Field Name>": number } } }],
 //   pgns: { "<pgn>": { stream: bool, rate: Hz, values: { "<Field Name>": number } } }
 // }
-// Phase 2 adds per-waypoint PGN values.
+// pgns holds the starting values; a waypoint's values take effect when the boat
+// reaches it (waypoint 1's at the start) and hold until the next waypoint changes them.
 
 const SCENARIO_DIR = path.join(STORAGE_DIR, 'scenarios');
 fs.mkdirSync(SCENARIO_DIR, { recursive: true });
@@ -25,6 +26,19 @@ function fileFor(id) {
 function slug(name) {
     const base = String(name || 'scenario').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'scenario';
     return `${base}-${crypto.randomBytes(3).toString('hex')}`;
+}
+
+// { "<pgn>": { "<Field Name>": number } } with junk dropped.
+function cleanValues(values) {
+    const out = {};
+    for (const [pgn, fields] of Object.entries(values || {})) {
+        if (!/^\d+$/.test(pgn) || !fields || typeof fields !== 'object') continue;
+        const clean = Object.fromEntries(
+            Object.entries(fields).filter(([, v]) => Number.isFinite(Number(v))).map(([k, v]) => [k, Number(v)])
+        );
+        if (Object.keys(clean).length) out[pgn] = clean;
+    }
+    return out;
 }
 
 function normalize(scenario) {
@@ -40,7 +54,12 @@ function normalize(scenario) {
         };
     }
     const waypoints = (scenario.waypoints || [])
-        .map((w, i) => ({ name: String(w.name || `Waypoint ${i + 1}`), lat: Number(w.lat), lon: Number(w.lon) }))
+        .map((w, i) => ({
+            name: String(w.name || `Waypoint ${i + 1}`),
+            lat: Number(w.lat),
+            lon: Number(w.lon),
+            values: cleanValues(w.values)
+        }))
         .filter(w => Number.isFinite(w.lat) && Number.isFinite(w.lon));
     return {
         id: scenario.id,

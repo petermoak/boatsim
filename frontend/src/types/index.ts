@@ -6,7 +6,10 @@ export interface Waypoint {
     name: string;
     lat: number;
     lon: number;
-  } 
+    // PGN values that take effect when the boat reaches this waypoint:
+    // { "<pgn>": { "<Field Name>": number } }
+    values?: Record<string, Record<string, number>>;
+  }
 
 export interface BoatState {
   lat: number;

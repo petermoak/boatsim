@@ -66,6 +66,7 @@ export class SimRunner {
         }
         this.speedInput = Number(this.pgns['128259']?.values?.['Speed Water Referenced']) || 0;
         this.sim.setWaypoints(scenario.waypoints);
+        this.applyWaypointValues(0);
         this.applySimulatedValues();
         this.dirty = false;
         try {
@@ -97,7 +98,11 @@ export class SimRunner {
 
     start() {
         if (this.running) return;
-        if (this.sim.finished) this.sim.reset();
+        if (this.sim.finished) {
+            this.sim.reset();
+            this.applyWaypointValues(0);
+            this.applySimulatedValues();
+        }
         this.running = true;
         this.lastTick = Date.now();
         this.tickTimer = setInterval(() => this.tick(), TICK_MS);
@@ -117,11 +122,12 @@ export class SimRunner {
         this.broadcastSession();
     }
 
-    // Back to the first waypoint without changing values.
+    // Back to the first waypoint, with its values (other live edits are kept).
     reset() {
         const wasRunning = this.running;
         this.stop();
         this.sim.reset();
+        this.applyWaypointValues(0);
         this.applySimulatedValues();
         if (wasRunning) this.start(); else this.broadcastSession();
     }
@@ -134,10 +140,28 @@ export class SimRunner {
         this.lastTick = now;
         const wasFinished = this.sim.finished;
         this.sim.step(dt, this.speedInput);
+        const arrivals = this.sim.arrivals || [];
+        for (const index of arrivals) {
+            console.log(`Reached waypoint ${index + 1}`);
+            this.applyWaypointValues(index);
+        }
         this.applySimulatedValues();
-        if (!wasFinished && this.sim.finished) {
-            console.log('Reached the last waypoint');
+        if (arrivals.length || (!wasFinished && this.sim.finished)) {
+            if (this.sim.finished) console.log('Reached the last waypoint');
             this.broadcastSession();
+        }
+    }
+
+    // A waypoint's PGN values take effect when the boat reaches it.
+    applyWaypointValues(index) {
+        const values = this.scenario?.waypoints?.[index]?.values;
+        if (!values) return;
+        for (const [pgn, fields] of Object.entries(values)) {
+            if (!this.pgns[pgn]) continue;
+            this.pgns[pgn].values = { ...this.pgns[pgn].values, ...fields };
+            if (pgn === '128259' && Number.isFinite(fields['Speed Water Referenced'])) {
+                this.speedInput = fields['Speed Water Referenced'];
+            }
         }
     }
 

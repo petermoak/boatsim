@@ -4,6 +4,8 @@ import './App.css';
 import { usePGNStore } from './stores/pgnStore';
 import { useEmitterStore } from './stores/emitterStore';
 import { useSimStore } from './stores/simStore';
+import { useEditorStore } from './stores/editorStore';
+import ScenarioEditor from './components/ScenarioEditor';
 
 // Components
 import Map from './components/Map';
@@ -24,6 +26,7 @@ function App() {
   const { initializePGNStore } = usePGNStore();
   const { toggleStreamLog, showStreamLog } = useEmitterStore();
   const { boat, scenario, pgns, simulatedPgns, running } = useSimStore();
+  const editor = useEditorStore();
 
   const [isDatabaseViewerOpen, setIsDatabaseViewerOpen] = useState(false);
   const [isDeviceMenuOpen, setIsDeviceMenuOpen] = useState(false);
@@ -68,11 +71,18 @@ function App() {
   return (
     <div className="App">
       <div className="main-container">
-        <div className="map-container">
+        <div className="map-container" style={{ position: 'relative' }}>
           <Map
             boatState={boat}
             waypoints={waypoints}
+            editMode={editor.active}
+            editWaypoints={editor.draft?.waypoints}
+            selectedWaypoint={editor.selected}
+            onAddWaypoint={editor.addWaypoint}
+            onSelectWaypoint={editor.select}
+            onMoveWaypoint={editor.moveWaypoint}
           />
+          {editor.active && <ScenarioEditor />}
         </div>
         <PGNPanel
           selectedPGNs={selectedPGNs}
