@@ -1,14 +1,33 @@
 # Boatsim
 
-Boat simulator that moves a boat along waypoints and emits NMEA 2000 PGNs. The browser UI (map,
-PGN selection, rates, emit log) generates the PGNs; the boatsim server sends them to two
+Boat simulator that moves a boat along waypoints and emits NMEA 2000 PGNs. The simulation runs
+in the boatsim server, so a scenario keeps running with no browser open; the browser UI (map,
+scenario picker, PGN values, rates, emit log) is a control panel. The server sends PGNs to two
 independent outputs, each switchable in the UI's **Outputs** menu:
 
 ```
-                                  ┌─ Signal K data feed (TCP 2603) ──> Signal K ──> dashboards, Freeboard
-browser UI --Socket.IO--> boatsim ┤
-                                  └─ bus output (TCP 10112) ──> injector plugin ──> NGX ──> N2K bus ──> MFD
+                                     ┌─ Signal K data feed (TCP 2603) ──> Signal K ──> dashboards, Freeboard
+boatsim scenario runner (server) ────┤
+        ▲ controls/edits (Socket.IO) └─ bus output (TCP 10112) ──> injector plugin ──> NGX ──> N2K bus ──> MFD
+   browser UI
 ```
+
+## Scenarios
+
+A scenario is a named route (waypoints) plus the PGNs it sends, with their values, rates and
+whether each one streams. Pick one in the scenario list next to **Start Simulation**:
+
+- **Start / Stop** runs or pauses the loaded scenario. It keeps running if you close the browser
+  or switch apps. Only one scenario runs at a time; switch scenarios while stopped.
+- Edits to PGN values, rates and stream checkboxes apply live. **Save** writes them into the
+  scenario; **Save as…** makes a new named copy.
+- **Restart** puts the boat back at the first waypoint. The boat stops at the last waypoint
+  (speed drops to 0); pressing Start again replays from the beginning.
+- On first start boatsim creates **Halifax loop** from the old saved waypoints and PGN defaults.
+  After a container restart the last loaded scenario is loaded again, stopped.
+
+Scenarios are stored as JSON in the `boatsim-data` volume (`/data/scenarios`). Drawing new routes on
+the chart is the next phase.
 
 - **Signal K data** makes boatsim a virtual NMEA 2000 gateway. Signal K decodes every PGN as if it
   came off the bus. Works with the bus powered off.
@@ -39,7 +58,7 @@ Settings (environment variables in the Portainer stack):
 | `BOATSIM_N2K_SOURCE` | `100` | N2K source address stamped on simulated PGNs |
 | `BOATSIM_PORT` | `5010` | Port for UI, API and Socket.IO |
 
-Saved PGN defaults and waypoints persist in the `boatsim-data` volume.
+Scenarios, PGN defaults and the last loaded scenario persist in the `boatsim-data` volume.
 
 ### 2. Signal K data feed (dashboards, Freeboard)
 
@@ -82,8 +101,7 @@ since it runs on a different port).
 
 ## Things to know
 
-- **Emission runs in the browser.** PGNs are only sent while a browser tab has the UI open and is
-  started. Two open tabs send everything twice.
+- **Boat speed** is the 128259 "Speed Water Referenced" value (m/s); change it live to change speed.
 - **Competing sources.** Simulated data competes with real sources for the same values: in Signal K
   (e.g. `signalk-fixedstation`, a real GPS or wind instrument) and on the bus (MFDs pick a source
   per data type). Use Signal K's **Source Priorities**, and don't simulate PGNs a real device on

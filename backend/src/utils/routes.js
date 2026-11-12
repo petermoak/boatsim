@@ -1,6 +1,63 @@
 import { saveDefaults, getDefaults, saveWaypoints, getWaypoints } from './storage.js';
+import { listScenarios, getScenario, saveScenario, deleteScenario } from '../sim/scenario_store.js';
 
-export function configureRoutes(app, forwarder) {
+// Wrap async handlers: errors become 400 { error } (bad input) or 500.
+const handle = (fn) => async (req, res) => {
+    try {
+        const result = await fn(req, res);
+        if (!res.headersSent) res.json(result ?? { ok: true });
+    } catch (error) {
+        console.error(`${req.method} ${req.url}:`, error.message);
+        res.status(error.status || 500).json({ error: error.message });
+    }
+};
+
+function notFound(message) {
+    const err = new Error(message);
+    err.status = 404;
+    return err;
+}
+
+export function configureRoutes(app, forwarder, runner) {
+    //// Scenarios (saved simulations) ////
+    app.get('/api/scenarios', handle(() => listScenarios()));
+
+    app.get('/api/scenarios/:id', handle(async (req) => {
+        const scenario = await getScenario(req.params.id);
+        if (!scenario) throw notFound('Scenario not found');
+        return scenario;
+    }));
+
+    // Create (POST) or replace (PUT) a scenario definition.
+    app.post('/api/scenarios', handle((req) => saveScenario({ ...req.body, id: undefined })));
+    app.put('/api/scenarios/:id', handle(async (req) => {
+        if (!(await getScenario(req.params.id))) throw notFound('Scenario not found');
+        const saved = await saveScenario({ ...req.body, id: req.params.id });
+        if (runner.scenario?.id === saved.id && !runner.running) await runner.load(saved.id);
+        return saved;
+    }));
+
+    app.delete('/api/scenarios/:id', handle(async (req) => {
+        if (runner.scenario?.id === req.params.id) {
+            const err = new Error('Load another scenario before deleting this one');
+            err.status = 400;
+            throw err;
+        }
+        await deleteScenario(req.params.id);
+    }));
+
+    //// Simulation session ////
+    app.get('/api/sim', handle(() => runner.snapshot()));
+    app.post('/api/sim/load', handle(async (req) => {
+        await runner.load(req.body.scenarioId);
+        return runner.snapshot();
+    }));
+    app.post('/api/sim/start', handle(() => { runner.start(); return runner.snapshot(); }));
+    app.post('/api/sim/stop', handle(() => { runner.stop(); return runner.snapshot(); }));
+    app.post('/api/sim/reset', handle(() => { runner.reset(); return runner.snapshot(); }));
+    // Save live edits into the loaded scenario, or as a new one when { name } is given.
+    app.post('/api/sim/save', handle((req) => runner.save({ name: req.body?.name })));
+
     // Logging middleware
     app.use((req, res, next) => {
         console.log(`Incoming ${req.method} request for ${req.url}`);

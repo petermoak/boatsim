@@ -13,6 +13,7 @@ dotenv.config({ path: path.join(os.homedir(), '.boatsim', '.env') });
 const { MessageForwarder } = await import('./message_forwarder.js');
 const { configureSocketServer } = await import('./utils/socket_server.js');
 const { configureRoutes } = await import('./utils/routes.js');
+const { SimRunner } = await import('./sim/sim_runner.js');
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -49,7 +50,12 @@ app.use(express.json());
 
 const forwarder = new MessageForwarder(io, outputOptions);
 
-configureRoutes(app, forwarder);
+// The simulation runs here, not in the browser, so a scenario keeps running
+// with no UI open. Loads the last scenario (or creates "Halifax loop").
+const runner = new SimRunner(io, forwarder);
+await runner.init();
+
+configureRoutes(app, forwarder, runner);
 
 // The Docker image packs /signalk-plugin so the Signal K container can
 // `npm install http://<pi>:<port>/signalk-plugin.tgz`.
@@ -76,6 +82,7 @@ httpServer.listen(port, '0.0.0.0', () => {
 });
 
 const shutdown = () => {
+    runner.stop();
     forwarder.cleanup();
     httpServer.close(() => process.exit(0));
     setTimeout(() => process.exit(0), 3000).unref();

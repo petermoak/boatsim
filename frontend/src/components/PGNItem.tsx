@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { PGNDefinition, PGNField } from '../types';
 import { usePGNStore } from '../stores/pgnStore';
 import { useEmitterStore } from '../stores/emitterStore';
+import { simApi } from '../services/sim';
 
 interface PGNItemProps {
     config: PGNDefinition;
@@ -63,6 +64,7 @@ const PGNItem: React.FC<PGNItemProps> = ({ config, pgnKey, rate, isSimulated }) 
         const parsedValue = parseFloat(parseFloat(value).toFixed(3));
         if (!isNaN(parsedValue)) {
             updatePGNFields(pgnKey, { [fieldName]: parsedValue });
+            simApi.setFields(pgnKey, { [fieldName]: parsedValue });
         }
         // Clear intermediate value
         setIntermediateValues(prev => ({
@@ -81,14 +83,23 @@ const PGNItem: React.FC<PGNItemProps> = ({ config, pgnKey, rate, isSimulated }) 
         // Parse the rate and limit to 3 decimal places
         const parsedRate = parseFloat(parseFloat(e.target.value).toFixed(3));
         updatePGNRate(pgnKey, parsedRate);
+        if (parsedRate > 0) simApi.setRate(pgnKey, parsedRate);
     };
 
     const handleStreamToggle = () => {
         if (PGNsToStream.includes(pgnKey)) {
             removePGNFromStream(pgnKey);
+            simApi.setStream(pgnKey, false);
         } else {
             addPGNToStream(pgnKey);
+            simApi.setStream(pgnKey, true);
         }
+    };
+
+    const handleLookupChange = (fieldName: string, value: string) => {
+        const parsed = parseFloat(value);
+        updatePGNFields(pgnKey, { [fieldName]: parsed });
+        simApi.setFields(pgnKey, { [fieldName]: parsed });
     };
 
     // Add this helper function to format the field summary
@@ -162,8 +173,8 @@ const PGNItem: React.FC<PGNItemProps> = ({ config, pgnKey, rate, isSimulated }) 
                                 </div>
                                 <div className="pgn-value-input-group">
                                     <select
-                                        value={currentValues[field.Name] || ''}
-                                        onChange={(e) => updatePGNFields(pgnKey, { [field.Name]: parseFloat(e.target.value) })}
+                                        value={currentValues[field.Name] ?? ''}
+                                        onChange={(e) => handleLookupChange(field.Name, e.target.value)}
                                     >
                                         {field.EnumValues.map((enumValue) => (
                                             <option key={enumValue.value} value={enumValue.value}>

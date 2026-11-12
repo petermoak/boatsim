@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Select from 'react-select';
 import PGNItem from './PGNItem';
 import PGNDatabase from './PGNDatabase';
+import ScenarioBar from './ScenarioBar';
 import { usePGNStore } from '../stores/pgnStore';
 
 interface PGNOption {
@@ -124,6 +125,7 @@ const PGNPanel = React.memo(({
             <div className="pgn-panel">  
                 <div className="pgn-panel-header">
                     <div className="pgn-header-left">
+                        <ScenarioBar />
                         <button
                             className={`blue-button ${isSimulating ? 'red-button' : ''}`}
                             onClick={isSimulating ? onStop : onStart}

@@ -13,6 +13,7 @@ interface EmitterStore {
     setIsEmitting: (isEmitting: boolean) => void;
     setStreamLog: (log: string[]) => void;
     appendToStreamLog: (log: string) => void;
+    appendLinesToStreamLog: (lines: string[]) => void;
     clearStreamLog: () => void;
     toggleStreamLog: () => void;
     togglePauseStreamLog: () => void;
@@ -36,6 +37,9 @@ export const useEmitterStore = create<EmitterStore>((set) => ({
     setStreamLog: (log: string[]) => set({ streamLog: log }),
     appendToStreamLog: (log: string) => set((state) => ({
         streamLog: [...state.streamLog, log].slice(-600)
+    })),
+    appendLinesToStreamLog: (lines: string[]) => set((state) => ({
+        streamLog: state.pauseStreamLog ? state.streamLog : [...state.streamLog, ...lines].slice(-600)
     })),
     clearStreamLog: () => set({ streamLog: [] }),
     toggleStreamLog: () => set((state) => ({ showStreamLog: !state.showStreamLog })),

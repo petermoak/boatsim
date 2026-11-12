@@ -6,8 +6,8 @@ import { CsvFeed } from './csv_feed.js';
 
 const { pgnToActisenseSerialFormat } = pkg;
 
-// Receives PGN batches from the browser over Socket.IO, encodes each one once
-// into an Actisense CSV line, and sends it to two independent outputs:
+// Receives PGN batches from the server-side simulation (SimRunner.send), encodes
+// each one once into an Actisense CSV line, and sends it to two independent outputs:
 //   - feed: virtual gateway Signal K reads as an NMEA 2000 connection (no bus needed)
 //   - link: injector plugin that transmits onto the physical bus via the NGX
 class MessageForwarder extends EventEmitter {
@@ -21,27 +21,11 @@ class MessageForwarder extends EventEmitter {
         });
         this.feed = new CsvFeed(feedOptions);
         this.link = new SignalKLink(linkOptions);
-        this.setupSubscribers();
         this.setupPublishers();
     }
 
     get outputs() {
         return [this.feed, this.link];
-    }
-
-    setupSubscribers() {
-        this.io.on('connection', (socket) => {
-            socket.on('update_pgn_2000', (data) => {
-                this.handlePGNUpdate(data);
-            });
-
-            socket.on('disconnect', (reason) => {
-                console.log('Client disconnected:', {
-                    id: socket.id,
-                    reason: reason
-                });
-            });
-        });
     }
 
     setupPublishers() {
@@ -105,7 +89,8 @@ class MessageForwarder extends EventEmitter {
         return lines;
     }
 
-    handlePGNUpdate(dataArray) {
+    // dataArray: [{ pgn_id, values }]
+    send(dataArray) {
         dataArray.forEach(data => this.statsManager.updateStats(data['pgn_id']));
 
         if (!this.anyOutputActive()) {

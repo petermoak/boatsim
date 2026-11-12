@@ -1,7 +1,20 @@
 import { io, Socket } from 'socket.io-client';
 import { useDeviceStore } from '../stores/deviceStore';
+import { useSimStore, SimSession } from '../stores/simStore';
+import { usePGNStore } from '../stores/pgnStore';
+import { useEmitterStore } from '../stores/emitterStore';
 
 let socket: Socket | null = null;
+
+// Push a server session into the UI stores.
+export function applySession(session: SimSession) {
+    useSimStore.getState().setSession(session);
+    usePGNStore.getState().applySessionPGNs(session.pgns);
+    useEmitterStore.getState().setPGNsToStream(
+        Object.entries(session.pgns).filter(([, cfg]) => cfg.stream).map(([pgn]) => pgn)
+    );
+    useEmitterStore.getState().setIsEmitting(session.running);
+}
 
 export const initSocket = (): Socket => {
     if (!socket) {
@@ -12,7 +25,8 @@ export const initSocket = (): Socket => {
             transports: ['websocket'],
             reconnectionDelay: 1000,
             reconnectionDelayMax: 5000,
-            reconnectionAttempts: 5,
+            // Keep trying: the simulation runs on the server, the UI just reconnects.
+            reconnectionAttempts: Infinity,
             forceNew: true,
             timeout: 5000,
             // Disable buffering/batching
@@ -54,6 +68,27 @@ export const initSocket = (): Socket => {
 
         socket.on('disconnect', (reason) => {
             console.log('Socket disconnected:', reason);
+            useSimStore.getState().setConnected(false);
+        });
+
+        socket.on('connect', () => useSimStore.getState().setConnected(true));
+
+        // Server-side simulation session and live state.
+        socket.on('sim_session', (session: SimSession) => applySession(session));
+
+        socket.on('sim_tick', (tick) => {
+            useSimStore.getState().setTick(tick);
+            if (tick.values) {
+                const pgns: Record<string, { rate: number; values: Record<string, number> }> = {};
+                for (const [pgn, values] of Object.entries(tick.values)) {
+                    if (values) pgns[pgn] = { rate: 0, values: values as Record<string, number> };
+                }
+                usePGNStore.getState().applySessionPGNs(pgns);
+            }
+        });
+
+        socket.on('pgn_log', (lines: string[]) => {
+            useEmitterStore.getState().appendLinesToStreamLog(lines);
         });
 
         socket.io.on('ping', () => {

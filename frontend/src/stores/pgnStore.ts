@@ -22,6 +22,9 @@ interface PGNStore {
     updatePGNFields: (pgn: string, values: Record<string, number>) => void;
     initializePGNState: (pgnConfigs: Record<string, PGNDefinition>, defaultPGNs: PGNDefaults) => void;
 
+    // Merge values and rates from the server session in one update.
+    applySessionPGNs: (pgns: Record<string, { rate: number; values: Record<string, number> }>) => void;
+
     //// RATES ////
     replacePGNRates: (pgnRates: Record<string, number>) => void;
     initializePGNRates: (pgnConfigs: Record<string, PGNDefinition>) => void;
@@ -89,6 +92,16 @@ export const usePGNStore = create<PGNStore>((set, get) => ({
         });
         set({ pgnState: state });
     },
+
+    applySessionPGNs: (pgns) => set((state) => {
+        const pgnState = { ...state.pgnState };
+        const pgnRates = { ...state.pgnRates };
+        for (const [pgn, cfg] of Object.entries(pgns)) {
+            if (cfg?.values) pgnState[pgn] = { ...pgnState[pgn], ...cfg.values };
+            if (cfg?.rate) pgnRates[pgn] = cfg.rate;
+        }
+        return { pgnState, pgnRates };
+    }),
 
     //// RATES ////
     replacePGNRates: (pgnRates) => set({ pgnRates }),
