@@ -40,8 +40,28 @@
       To create a production bundle, use `npm run build` or `yarn build`.
     -->
     <script>
-      // Handle both web and electron paths
-      window.PUBLIC_URL = window.electron ? '.' : '%PUBLIC_URL%';
+      window.PUBLIC_URL = '%PUBLIC_URL%';
+
+      // Signal K App Dock: boatsim is on a different port than the dock, so the
+      // dock can't see our taps. Forward pointerdowns so double-tap still opens it.
+      // Only active when boatsim is shown inside a frame.
+      if (window.self !== window.top) {
+        document.addEventListener(
+          'pointerdown',
+          function (e) {
+            window.top.postMessage(
+              {
+                type: 'signalk-app-dock:pointerdown',
+                x: e.clientX,
+                y: e.clientY,
+                t: performance.timeOrigin + e.timeStamp
+              },
+              '*'
+            );
+          },
+          { passive: true, capture: true }
+        );
+      }
     </script>
   </body>
 </html>

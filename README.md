@@ -31,6 +31,11 @@ Boatsim N2K Injector**, enable it, and keep port `10112` unless it clashes.
 The plugin also adds **Boatsim** to Signal K's **Webapps** menu; it opens boatsim on port 5010 of the
 same host (append `?port=NNNN` to its URL if you publish a different port).
 
+**App Dock:** with `@signalk/app-dock` installed, open **Plugin Config → App Dock**, click
+**Discover Installed Webapps**, and enable **Boatsim**. Double-tap anywhere in boatsim to bring
+up the dock and switch to Freeboard-SK or other apps (boatsim forwards its taps to the dock,
+since it runs on a different port).
+
 To update the plugin later, redeploy the boatsim stack and repeat the same three commands.
 
 Boatsim reaches the plugin over the Docker network Signal K is on (`serendipity` on the Pi), by
