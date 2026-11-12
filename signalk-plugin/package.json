@@ -1,11 +1,16 @@
 {
   "name": "signalk-boatsim-injector",
-  "version": "1.0.0",
-  "description": "Accepts Actisense-format NMEA 2000 lines from boatsim over TCP and transmits them through Signal K's N2K connection",
+  "version": "1.1.0",
+  "description": "Accepts Actisense-format NMEA 2000 lines from boatsim over TCP and transmits them through Signal K's N2K connection; adds a Boatsim link to the Webapps menu",
   "main": "index.js",
   "keywords": [
     "signalk-node-server-plugin",
-    "signalk-category-nmea-2000"
+    "signalk-category-nmea-2000",
+    "signalk-webapp"
   ],
+  "signalk": {
+    "displayName": "Boatsim",
+    "appIcon": "./boat.png"
+  },
   "license": "MIT"
 }

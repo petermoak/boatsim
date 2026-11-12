@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boatsim</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #1e1e1e; color: #ddd; margin: 0; padding: 2rem 1rem; text-align: center; }
+    a { color: #6cb6ff; }
+  </style>
+  <script>
+    // Boatsim runs in its own container on the same host as Signal K.
+    // Override the port with ?port=NNNN if the stack publishes a different one.
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var port = params.get('port') || '5010';
+      var target = window.location.protocol + '//' + window.location.hostname + ':' + port + '/';
+      window.location.replace(target);
+      document.addEventListener('DOMContentLoaded', function () {
+        var link = document.getElementById('target');
+        link.href = target;
+        link.textContent = target;
+      });
+    })();
+  </script>
+</head>
+<body>
+  <img src="boat.png" alt="" width="64" height="64">
+  <p>Opening Boatsim at <a id="target" href="#">…</a></p>
+</body>
+</html>

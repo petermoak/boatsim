@@ -16,14 +16,22 @@ Boatsim can't open the Actisense itself because Signal K already holds it, so a 
 (`signalk-plugin/`) receives boatsim's messages and hands them to Signal K's N2K connection.
 
 After the boatsim stack is running (step 2), the plugin is downloadable from it. In Portainer, open a
-console on the **Signal K** container and run:
+console on the **Signal K** container and run (npm there refuses to install straight from a URL, so
+download the file into `~/.signalk` first; keep it there, npm references it on later installs):
 
 ```bash
-cd ~/.signalk && npm install http://<pi-ip>:5010/signalk-plugin.tgz
+cd ~/.signalk
+node -e 'fetch("http://<pi-ip>:5010/signalk-plugin.tgz").then(r=>{if(r.status!==200)throw new Error(r.status);return r.arrayBuffer()}).then(b=>require("fs").writeFileSync("signalk-boatsim-injector.tgz",Buffer.from(b))).then(()=>console.log("saved"))'
+npm install ./signalk-boatsim-injector.tgz
 ```
 
 Restart the Signal K container, then in the Signal K admin UI go to **Server → Plugin Config →
 Boatsim N2K Injector**, enable it, and keep port `10112` unless it clashes.
+
+The plugin also adds **Boatsim** to Signal K's **Webapps** menu; it opens boatsim on port 5010 of the
+same host (append `?port=NNNN` to its URL if you publish a different port).
+
+To update the plugin later, redeploy the boatsim stack and repeat the same three commands.
 
 Boatsim reaches the plugin over the Docker network Signal K is on (`serendipity` on the Pi), by
 Signal K's container name. The stack joins that network; set `SIGNALK_HOST` (container name,
