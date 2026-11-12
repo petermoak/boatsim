@@ -6,6 +6,7 @@ interface DeviceStatus {
     path: string;
     type: string;
     enabled?: boolean;
+    detail?: string;
     error?: string | null;
 }
 

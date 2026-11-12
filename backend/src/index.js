@@ -19,10 +19,21 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // One port serves the UI, REST API and Socket.IO.
 const port = Number(process.env.BOATSIM_PORT || process.env.REACT_APP_BACKEND_PORT || 5010);
 
-const signalkOptions = {
-    host: process.env.SIGNALK_HOST || 'host.docker.internal',
-    port: Number(process.env.SIGNALK_INJECTOR_PORT || 10112),
-    enabled: process.env.SIGNALK_AUTOCONNECT !== 'false'
+const outputOptions = {
+    // Virtual gateway: Signal K connects here with a "canboat CSV" NMEA 2000 connection.
+    feed: {
+        readPort: Number(process.env.SIGNALK_FEED_PORT || 2603),
+        inputPort: Number(process.env.SIGNALK_FEED_INPUT_PORT || 2600),
+        enabled: process.env.SIGNALK_FEED_ENABLED !== 'false'
+    },
+    // Physical bus: we connect to the injector plugin, which transmits via the NGX.
+    link: {
+        host: process.env.SIGNALK_HOST || 'host.docker.internal',
+        port: Number(process.env.SIGNALK_INJECTOR_PORT || 10112),
+        enabled: process.env.SIGNALK_AUTOCONNECT !== 'false'
+    },
+    // N2K source address stamped on every PGN (shows as the source in Signal K).
+    sourceAddress: Number(process.env.BOATSIM_N2K_SOURCE || 100)
 };
 
 const frontendBuildDir = process.env.FRONTEND_BUILD_DIR
@@ -36,7 +47,7 @@ const { corsMiddleware, io } = configureSocketServer(httpServer);
 app.use(corsMiddleware);
 app.use(express.json());
 
-const forwarder = new MessageForwarder(io, signalkOptions);
+const forwarder = new MessageForwarder(io, outputOptions);
 
 configureRoutes(app, forwarder);
 
@@ -61,7 +72,7 @@ if (fs.existsSync(path.join(frontendBuildDir, 'index.html'))) {
 
 httpServer.listen(port, '0.0.0.0', () => {
     console.log(`Boatsim running on port ${port}`);
-    console.log(`Signal K injector target: ${signalkOptions.host}:${signalkOptions.port}`);
+    console.log(`Signal K injector target: ${outputOptions.link.host}:${outputOptions.link.port}`);
 });
 
 const shutdown = () => {

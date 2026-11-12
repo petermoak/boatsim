@@ -11,7 +11,7 @@ function getSecondsSinceMidnight(timestamp: Date): number {
 }
 
 function getMillisecondsSinceMidnight(timestamp: Date): number {
-  return getSecondsSinceMidnight(timestamp) * 1000;
+  return getSecondsSinceMidnight(timestamp) * 1000 + timestamp.getUTCMilliseconds();
 }
 
 export function createGNSSPositionData(position: BoatState, timestamp: Date = new Date()) {
@@ -24,11 +24,12 @@ export function createGNSSPositionData(position: BoatState, timestamp: Date = ne
       Time: getSecondsSinceMidnight(timestamp),
       Latitude: position.lat,
       Longitude: position.lon,
-      // Altitude: 0.0, // Assuming sea level
-      // GNSS_type: 0, // GPS
+      // Field names must match the canboat definitions exactly ("Number of SVs",
+      // not "Number_of_SVs"); unknown names are silently dropped.
+      "GNSS type": 0, // GPS
       Method: 1, // GNSS fix
       Integrity: 0, // No integrity checking
-      Number_of_SVs: 10, // Simulated number of satellites
+      "Number of SVs": 10, // Simulated number of satellites
       HDOP: 1.0, // Horizontal dilution of precision
       PDOP: 1.0, // Position dilution of precision
       // GeoidalSeparation: 0.0,
@@ -62,8 +63,7 @@ export function createCOGSOGData(position: BoatState, timestamp: Date = new Date
     pgn: 129026,
     timestamp: timestamp.getTime(),
     fields: {
-      // SID: 0,
-      // "COG Reference": 0, // True (0), Magnetic (1)
+      "COG Reference": 0, // True (0), Magnetic (1)
       COG: cogRadians,  // Course Over Ground in radians
       SOG: sogMetersPerSecond  // Speed Over Ground in m/s
     }
@@ -75,10 +75,10 @@ export function createSystemTimeData(timestamp: Date = new Date()) {
     pgn: 126992,
     timestamp: timestamp.getTime(),
     fields: {
-      // SID: 0,  // Sequence ID
-      // Source: 0,  // GPS
+      Source: 0,  // GPS
       Date: getDaysSinceEpoch(timestamp),
-      Time: getMillisecondsSinceMidnight(timestamp)
+      // The Time field is in seconds (0.0001 s resolution), not milliseconds.
+      Time: getMillisecondsSinceMidnight(timestamp) / 1000
     }
   };
 }

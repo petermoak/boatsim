@@ -1,12 +1,8 @@
 import net from 'net';
 import { EventEmitter } from 'events';
-import pkg from '@canboat/canboatjs';
 
-const { pgnToActisenseSerialFormat } = pkg;
-
-// TCP client to the signalk-boatsim-injector plugin (see /signalk-plugin).
-// Each PGN is encoded here into an Actisense text line and sent newline-delimited;
-// Signal K passes the line to its Actisense gateway unchanged.
+// TCP client to the signalk-boatsim-injector plugin (see /signalk-plugin), which
+// transmits each Actisense CSV line onto the N2K bus through Signal K's gateway.
 export class SignalKLink extends EventEmitter {
     constructor({ host, port, enabled = true }) {
         super();
@@ -22,7 +18,7 @@ export class SignalKLink extends EventEmitter {
     }
 
     get path() {
-        return `signalk://${this.host}:${this.port}`;
+        return `signalk-bus://${this.host}:${this.port}`;
     }
 
     connect() {
@@ -74,28 +70,22 @@ export class SignalKLink extends EventEmitter {
     getStatus() {
         return {
             path: this.path,
-            type: 'signalk',
+            type: 'n2k-bus',
             status: this.status,
             enabled: this.enabled,
+            detail: !this.enabled
+                ? 'off'
+                : this.status === 'connected'
+                    ? 'to N2K bus via Signal K gateway'
+                    : 'retrying injector plugin',
             error: this.lastError,
             timestamp: Date.now()
         };
     }
 
-    // dataArray: [{ pgn_id, values }] as sent by the frontend PGNEmitter
-    write(dataArray, prio = 2, dst = 255) {
-        if (this.status !== 'connected' || !this.socket) return 0;
-        let lines = '';
-        for (const data of dataArray) {
-            const pgn = parseInt(data.pgn_id);
-            try {
-                const line = pgnToActisenseSerialFormat({ pgn, prio, dst, fields: data.values });
-                if (line) lines += line + '\n';
-            } catch (err) {
-                console.error(`Failed to encode PGN ${pgn}: ${err.message}`);
-            }
-        }
-        if (lines) this.socket.write(lines);
-        return lines.length;
+    // lines: newline-terminated Actisense CSV lines
+    write(lines) {
+        if (this.status !== 'connected' || !this.socket || !lines) return;
+        this.socket.write(lines);
     }
 }

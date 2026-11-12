@@ -38,6 +38,8 @@ COPY --from=backend /src/signalk-plugin.tgz ./signalk-plugin.tgz
 COPY --from=frontend /src/frontend/build ./frontend/build
 RUN mkdir -p /data && chown node:node /data
 USER node
-EXPOSE 5010
+# 5010: UI/API/Socket.IO. 2603/2600: Signal K "canboat CSV" feed (data/input),
+# reached by Signal K over the shared Docker network, so not published.
+EXPOSE 5010 2603 2600
 VOLUME ["/data"]
 CMD ["node", "backend/src/index.js"]

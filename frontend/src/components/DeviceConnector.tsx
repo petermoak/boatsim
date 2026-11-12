@@ -8,8 +8,22 @@ interface DeviceConnectorProps {
   onConnectionStatusChange: (hasConnections: boolean) => void;
 }
 
-// PGNs go out through Signal K (signalk-boatsim-injector plugin), which owns the
-// Actisense gateway. The backend reports that link as its single "device".
+// The backend reports two outputs:
+//  - signalk-feed: virtual gateway Signal K reads as an NMEA 2000 connection
+//  - n2k-bus: injector plugin that transmits onto the physical bus via the NGX
+const OUTPUT_LABELS: Record<string, string> = {
+  'signalk-feed': 'Signal K data',
+  'n2k-bus': 'N2K bus (NGX)'
+};
+
+function statusLabel(type: string, status: string, enabled?: boolean): { text: string; cls: string } {
+  if (enabled === false) return { text: 'off', cls: 'off' };
+  if (status === 'connected') return { text: 'connected', cls: 'connected' };
+  return type === 'signalk-feed'
+    ? { text: 'waiting', cls: 'waiting' }
+    : { text: 'retrying', cls: 'disconnected' };
+}
+
 const DeviceConnector: React.FC<DeviceConnectorProps> = ({ className, onClose, onConnectionStatusChange }) => {
   const {
     devices,
@@ -46,8 +60,8 @@ const DeviceConnector: React.FC<DeviceConnectorProps> = ({ className, onClose, o
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
-  const links = Object.entries(devices);
-  const anyConnected = links.some(([, d]) => d.status === 'connected');
+  const outputs = Object.entries(devices);
+  const anyConnected = outputs.some(([, d]) => d.status === 'connected');
 
   useEffect(() => {
     onConnectionStatusChange?.(anyConnected);
@@ -56,7 +70,7 @@ const DeviceConnector: React.FC<DeviceConnectorProps> = ({ className, onClose, o
   return (
     <div className={`device-connector device-connector-dynamic ${className || ''}`}>
       <div className="device-table-header">
-        <h3>Signal K Output</h3>
+        <h3>Outputs</h3>
         <div className="header-buttons">
           <button className="close-button" onClick={() => onClose?.()}>
             ×
@@ -65,47 +79,51 @@ const DeviceConnector: React.FC<DeviceConnectorProps> = ({ className, onClose, o
       </div>
 
       <div className="device-table device-table-dynamic">
-        {links.length === 0 ? (
+        {outputs.length === 0 ? (
           <div className="no-devices">Waiting for backend…</div>
         ) : (
           <table>
             <thead>
               <tr>
                 <th>Status</th>
-                <th>Target</th>
+                <th>Output</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {links.map(([path, link]) => (
-                <tr key={path}>
-                  <td>
-                    <span className={`device-status ${link.status}`}>
-                      {link.status === 'disconnected' && link.enabled ? 'retrying' : link.status}
-                    </span>
-                  </td>
-                  <td>{path}</td>
-                  <td>
-                    {link.enabled ? (
-                      <button
-                        className="disconnect-button"
-                        onClick={() => disconnectDevice(path)}
-                        disabled={isConnecting}
-                      >
-                        Disconnect
-                      </button>
-                    ) : (
-                      <button
-                        className="connect-button"
-                        onClick={() => connectDevice(path)}
-                        disabled={isConnecting}
-                      >
-                        Connect
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {outputs.map(([path, output]) => {
+                const label = statusLabel(output.type, output.status, output.enabled);
+                return (
+                  <tr key={path}>
+                    <td>
+                      <span className={`device-status ${label.cls}`}>{label.text}</span>
+                    </td>
+                    <td>
+                      {OUTPUT_LABELS[output.type] || output.type}
+                      {output.detail && <span className="device-detail">{output.detail}</span>}
+                    </td>
+                    <td>
+                      {output.enabled ? (
+                        <button
+                          className="disconnect-button"
+                          onClick={() => disconnectDevice(path)}
+                          disabled={isConnecting}
+                        >
+                          Turn off
+                        </button>
+                      ) : (
+                        <button
+                          className="connect-button"
+                          onClick={() => connectDevice(path)}
+                          disabled={isConnecting}
+                        >
+                          Turn on
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

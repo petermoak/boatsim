@@ -16,6 +16,10 @@ services:
     ports:
       - "5010:5010"
     environment:
+      # Signal K data feed (virtual gateway). Signal K connects to boatsim:2603
+      # (and input port 2600) over the shared network; nothing to publish.
+      SIGNALK_FEED_ENABLED: ${SIGNALK_FEED_ENABLED:-true}
+      # Bus output via the injector plugin and Signal K's NGX connection.
       SIGNALK_HOST: ${SIGNALK_HOST:-signalk}
       SIGNALK_INJECTOR_PORT: ${SIGNALK_INJECTOR_PORT:-10112}
       # Set to "false" to start with output disabled (toggle in the UI).

@@ -50,14 +50,15 @@ export function configureRoutes(app, forwarder) {
     });
 
     // Device management routes
-    // The only "device" is the TCP link to the Signal K injector plugin.
+    // "Devices" are the two outputs: the Signal K feed and the bus injector link.
+    // connect/disconnect take { devicePath } from the status keys.
     app.get('/api/device/status', (req, res) => {
         res.json(forwarder.getEachDeviceStatus());
     });
 
     app.post('/api/device/connect', (req, res) => {
         try {
-            forwarder.connectDevice();
+            forwarder.connectDevice(req.body.devicePath);
             return res.json({ message: 'Connection initiated' });
         } catch (error) {
             return res.status(500).json({ error: error.message });
@@ -66,7 +67,7 @@ export function configureRoutes(app, forwarder) {
 
     app.post('/api/device/disconnect', (req, res) => {
         try {
-            forwarder.disconnectDevice();
+            forwarder.disconnectDevice(req.body.devicePath);
             res.json({ message: 'Disconnection initiated' });
         } catch (error) {
             res.status(500).json({ error: error.message });

@@ -108,6 +108,22 @@
   color: white;
 }
 
+.device-status.waiting {
+  background: #ffa726;
+  color: white;
+}
+
+.device-status.off {
+  background: #9e9e9e;
+  color: white;
+}
+
+.device-detail {
+  display: block;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
 .connect-button,
 .disconnect-button {
   padding: 4px 8px;
